@@ -819,7 +819,7 @@ export default function LVGLDesigner() {
         </div>
 
         {/* SVG Canvas */}
-        <div style={{ border: "1px solid #1a2a3a", borderRadius: 6, overflow: "hidden", boxShadow: "0 4px 40px rgba(0,0,0,0.5)", background: "#000" }}>
+        <div style={{ border: "1px solid #1a2a3a", borderRadius: 6, overflow: "hidden", boxShadow: "0 4px 40px rgba(0,0,0,0.5)", background: "#000", flexShrink: 0 }}>
           <svg ref={svgRef} width={W} height={H} viewBox={`0 0 ${W} ${H}`} onClick={() => updateState({ selectedWidget: null })}>
             <rect width={W} height={H} fill={page.bgColor || "#000"}/>
 
