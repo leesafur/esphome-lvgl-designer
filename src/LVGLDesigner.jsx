@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import * as jsyaml from "js-yaml";
 
 // ================================================================
 // ESPHome LVGL Visual Designer
@@ -637,16 +638,127 @@ function PropertyEditor({ widget, onChange }) {
 }
 
 // ================================================================
+// YAML → STATE (import)
+// ================================================================
+function fromHex(v) {
+  if (v === undefined || v === null || v === "") return undefined;
+  const n = typeof v === "number" ? v : parseInt(String(v).replace(/^0x/i, ""), 16);
+  if (isNaN(n)) return undefined;
+  return "#" + n.toString(16).padStart(6, "0").toUpperCase();
+}
+
+function parseYamlWidget(typeKey, props) {
+  if (!props || typeof props !== "object") return null;
+  const SKIP = new Set(["id","widgets","rows","items","layout","on_press","styles","align","outline_width"]);
+  const widget = {
+    uid: uid(), type: typeKey,
+    id: props.id || `${typeKey}_${uid().slice(1,5)}`,
+    x: props.x || 0, y: props.y || 0,
+    ...(props.width !== undefined ? { width: props.width } : {}),
+    ...(props.height !== undefined ? { height: props.height } : {}),
+    flex_grow: props.flex_grow || 0,
+  };
+  Object.entries(props).forEach(([k, v]) => {
+    if (SKIP.has(k) || v === undefined || v === null) return;
+    widget[k] = k.includes("color") ? (fromHex(v) ?? v) : v;
+  });
+  if (props.items && typeof props.items === "object" && !Array.isArray(props.items)) {
+    Object.entries(props.items).forEach(([k, v]) => {
+      if (k === "styles") return;
+      widget[`items_${k}`] = k.includes("color") ? (fromHex(v) ?? v) : v;
+    });
+  }
+  if (typeKey === "buttonmatrix" && props.rows) {
+    widget.rows = props.rows.map(row =>
+      (row.buttons || []).map(btn => ({ id: btn.id || "b" + uid().slice(1,5), text: btn.text || "" }))
+    );
+  }
+  if (props.layout) {
+    widget.layout_type = props.layout.type || "none";
+    if (props.layout.flex_flow) widget.flex_flow = props.layout.flex_flow;
+    if (props.layout.flex_align_main) widget.flex_align_main = props.layout.flex_align_main;
+    if (props.layout.flex_align_cross) widget.flex_align_cross = props.layout.flex_align_cross;
+  } else {
+    widget.layout_type = widget.layout_type || "none";
+  }
+  if (typeKey === "obj") widget.children = [];
+  if (props.widgets) {
+    widget.children = props.widgets.flatMap(w => {
+      const [wtype, wprops] = Object.entries(w)[0] || [];
+      if (!wtype) return [];
+      const child = parseYamlWidget(wtype, wprops);
+      return child ? [child] : [];
+    });
+  }
+  return widget;
+}
+
+function yamlToState(yamlStr, currentState) {
+  const parsed = jsyaml.load(yamlStr);
+  const lvgl = parsed?.lvgl || parsed;
+  if (!lvgl?.pages) throw new Error("Could not find lvgl.pages in YAML");
+
+  const theme = JSON.parse(JSON.stringify(currentState.theme));
+  ["button","label"].forEach(k => {
+    if (!lvgl.theme?.[k]) return;
+    theme[k] = {};
+    Object.entries(lvgl.theme[k]).forEach(([pk,pv]) => { theme[k][pk] = pk.includes("color") ? (fromHex(pv) ?? pv) : pv; });
+  });
+  if (lvgl.theme?.buttonmatrix) {
+    theme.buttonmatrix = {};
+    Object.entries(lvgl.theme.buttonmatrix).forEach(([k,v]) => {
+      if (k === "items" && typeof v === "object") {
+        Object.entries(v).forEach(([ik,iv]) => { theme.buttonmatrix[`items_${ik}`] = ik.includes("color") ? (fromHex(iv) ?? iv) : iv; });
+      } else {
+        theme.buttonmatrix[k] = k.includes("color") ? (fromHex(v) ?? v) : v;
+      }
+    });
+  }
+
+  const pages = lvgl.pages.map((page, i) => {
+    const existing = currentState.pages[i] || currentState.pages[0] || {};
+    const widgets = (page.widgets || []).flatMap(w => {
+      const [wtype, wprops] = Object.entries(w)[0] || [];
+      if (!wtype) return [];
+      const widget = parseYamlWidget(wtype, wprops);
+      return widget ? [widget] : [];
+    });
+    return {
+      id: page.id || `page_${i}`,
+      name: (page.id || `Page ${i+1}`).replace(/_/g," ").replace(/\b\w/g, c => c.toUpperCase()),
+      bgColor: fromHex(page.bg_color) || "#000000",
+      layout_type: page.layout ? (page.layout.type || "none") : "none",
+      ...(page.layout?.flex_flow ? { flex_flow: page.layout.flex_flow } : {}),
+      ...(page.layout?.flex_align_main ? { flex_align_main: page.layout.flex_align_main } : {}),
+      ...(page.layout?.flex_align_cross ? { flex_align_cross: page.layout.flex_align_cross } : {}),
+      titleBar: existing.titleBar || { enabled: false, text: "", bg_color: "#16213e", text_color: "#ffffff", height: 36 },
+      widgets,
+    };
+  });
+
+  return { ...currentState, theme, pages, selectedPage: 0, selectedWidget: null };
+}
+
+// ================================================================
 // MAIN APP
 // ================================================================
 export default function LVGLDesigner() {
-  const [state, setState] = useState(createDefaultState);
+  const [state, setState] = useState(() => {
+    try { const s = localStorage.getItem("lvgl_designer_state"); if (s) return JSON.parse(s); } catch(e) {}
+    return createDefaultState();
+  });
   const [leftPanel, setLeftPanel] = useState("toolbox");
   const [rightPanel, setRightPanel] = useState("props");
   const [showYaml, setShowYaml] = useState(false);
   const [yamlText, setYamlText] = useState("");
   const [dragInfo, setDragInfo] = useState(null);
   const svgRef = useRef(null);
+  const importRef = useRef(null);
+
+  // Autosave to localStorage on every state change
+  useEffect(() => {
+    try { localStorage.setItem("lvgl_designer_state", JSON.stringify(state)); } catch(e) {}
+  }, [state]);
 
   const { displaySize, scale: S, pages, selectedPage, selectedWidget, theme, navFooter } = state;
   const page = pages[selectedPage] || pages[0];
@@ -655,6 +767,29 @@ export default function LVGLDesigner() {
 
   // ---- Helpers ----
   const updateState = useCallback((updates) => setState(s => ({ ...s, ...updates })), []);
+
+  const exportJSON = useCallback(() => {
+    const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = "lvgl-design.json"; a.click();
+    URL.revokeObjectURL(url);
+  }, [state]);
+
+  const importJSON = useCallback((e) => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try { setState(JSON.parse(ev.target.result)); }
+      catch(err) { alert("Invalid design file: " + err.message); }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  }, []);
+
+  const applyYaml = useCallback(() => {
+    try { setState(yamlToState(yamlText, state)); setShowYaml(false); }
+    catch(err) { alert("Could not apply YAML:\n" + err.message); }
+  }, [yamlText, state]);
 
   const findWidget = useCallback((widgets, uid) => {
     for (const w of widgets) { if (w.uid === uid) return w; if (w.children) { const f = findWidget(w.children, uid); if (f) return f; } } return null;
@@ -816,6 +951,11 @@ export default function LVGLDesigner() {
             {[1, 1.5, 2, 2.5, 3].map(v => <option key={v} value={v}>{v}x</option>)}
           </select>
           <button onClick={() => { setYamlText(generateYaml(state)); setShowYaml(true); }} style={{ padding: "4px 12px", fontSize: 11, background: "#1a4020", color: "#6adf6a", border: "1px solid #2a6a3a", borderRadius: 4, cursor: "pointer", fontWeight: 600 }}>⟨/⟩ YAML</button>
+          <span style={{ width: 1, height: 20, background: "#1a2a3a", margin: "0 4px" }}/>
+          <button onClick={exportJSON} title="Export design as JSON file" style={{ padding: "4px 10px", fontSize: 11, background: "#1a2a3a", color: "#8ac4ff", border: "1px solid #2a4a6a", borderRadius: 4, cursor: "pointer" }}>💾 Save</button>
+          <label title="Import design from JSON file" style={{ padding: "4px 10px", fontSize: 11, background: "#1a2a3a", color: "#8ac4ff", border: "1px solid #2a4a6a", borderRadius: 4, cursor: "pointer" }}>
+            📂 Load<input ref={importRef} type="file" accept=".json" onChange={importJSON} style={{ display: "none" }}/>
+          </label>
         </div>
 
         {/* SVG Canvas */}
@@ -903,6 +1043,7 @@ export default function LVGLDesigner() {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderBottom: "1px solid #1a2a3a" }}>
             <span style={{ fontWeight: 700, color: "#8ac4ff", fontSize: 13 }}>Generated ESPHome LVGL YAML</span>
             <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={applyYaml} title="Parse YAML and update the canvas (best-effort)" style={{ padding: "4px 12px", background: "#1a3040", color: "#60c4ff", border: "1px solid #2a5a7a", borderRadius: 4, fontSize: 11, cursor: "pointer", fontWeight: 600 }}>↩ Apply to Canvas</button>
               <button onClick={() => navigator.clipboard?.writeText(yamlText)} style={{ padding: "4px 12px", background: "#1a4020", color: "#6adf6a", border: "1px solid #2a6a3a", borderRadius: 4, fontSize: 11, cursor: "pointer", fontWeight: 600 }}>📋 Copy</button>
               <button onClick={() => setShowYaml(false)} style={{ padding: "4px 10px", background: "#301a1a", color: "#ff8a8a", border: "1px solid #6a2a2a", borderRadius: 4, fontSize: 11, cursor: "pointer" }}>✕</button>
             </div>
