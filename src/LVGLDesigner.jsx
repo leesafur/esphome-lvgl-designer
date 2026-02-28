@@ -906,7 +906,7 @@ export default function LVGLDesigner() {
               <button onClick={() => setShowYaml(false)} style={{ padding: "4px 10px", background: "#301a1a", color: "#ff8a8a", border: "1px solid #6a2a2a", borderRadius: 4, fontSize: 11, cursor: "pointer" }}>✕</button>
             </div>
           </div>
-          <textarea value={yamlText} onChange={e => setYamlText(e.target.value)} spellCheck={false} style={{ flex: 1, overflow: "auto", padding: 16, margin: 0, fontSize: 11, fontFamily: "'JetBrains Mono', 'Fira Code', monospace", color: "#8ac4ff", lineHeight: 1.6, whiteSpace: "pre", background: "#0d1520", border: "none", outline: "none", resize: "none" }} />
+          <textarea value={yamlText} onChange={e => setYamlText(e.target.value)} spellCheck={false} style={{ flex: 1, minHeight: 0, overflow: "auto", padding: 16, margin: 0, fontSize: 11, fontFamily: "'JetBrains Mono', 'Fira Code', monospace", color: "#8ac4ff", lineHeight: 1.6, whiteSpace: "pre", background: "#0d1520", border: "none", outline: "none", resize: "none" }} />
         </div>
       </div>}
     </div>
