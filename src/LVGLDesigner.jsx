@@ -797,7 +797,7 @@ export default function LVGLDesigner() {
       </div>
 
       {/* CENTER: Canvas */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", overflow: "auto", padding: 12 }}>
+      <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", alignItems: "center", overflow: "auto", padding: 12 }}>
         {/* Top bar: pages, display size, scale, yaml */}
         <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", marginBottom: 8, width: "100%", justifyContent: "center" }}>
           {pages.map((p, i) => (
