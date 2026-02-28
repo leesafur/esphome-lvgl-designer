@@ -898,7 +898,7 @@ export default function LVGLDesigner() {
 
       {/* YAML Modal */}
       {showYaml && <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }} onClick={() => setShowYaml(false)}>
-        <div onClick={e => e.stopPropagation()} style={{ width: "80%", maxWidth: 700, maxHeight: "85vh", background: "#0d1520", border: "1px solid #1a3050", borderRadius: 8, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <div onClick={e => e.stopPropagation()} style={{ width: "80%", maxWidth: 700, height: "85vh", background: "#0d1520", border: "1px solid #1a3050", borderRadius: 8, display: "flex", flexDirection: "column", overflow: "hidden" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderBottom: "1px solid #1a2a3a" }}>
             <span style={{ fontWeight: 700, color: "#8ac4ff", fontSize: 13 }}>Generated ESPHome LVGL YAML</span>
             <div style={{ display: "flex", gap: 8 }}>
