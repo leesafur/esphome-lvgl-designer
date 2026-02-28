@@ -192,8 +192,8 @@ function RenderWidget({ w, s, theme, isSelected, onSelect, onDragStart, parentX 
             const bx = x + (padA + bi * (btnW + padC)) * s;
             const by = y + (padA + ri * (rowH + padR)) * s;
             return <g key={`${ri}-${bi}`}>
-              <rect x={bx} y={by} width={btnW*s} height={rowH*s} rx={(w.items_radius||4)*s} fill={w.items_bg_color||"#2f8cd8"} stroke={w.items_border_color||"#0077b3"} strokeWidth={(w.items_border_width||1)*s}/>
-              <text x={bx+btnW*s/2} y={by+rowH*s/2} fill={w.items_text_color||"#fff"} fontSize={(FONT_SIZES[w.items_text_font||"montserrat_12"]||12)*s} fontFamily="sans-serif" textAnchor="middle" dominantBaseline="central">{btn.text||"Btn"}</text>
+              <rect x={bx} y={by} width={btnW*s} height={rowH*s} rx={(w.items_radius||4)*s} fill={btn.bg_color||w.items_bg_color||"#2f8cd8"} stroke={w.items_border_color||"#0077b3"} strokeWidth={(w.items_border_width||1)*s}/>
+              <text x={bx+btnW*s/2} y={by+rowH*s/2} fill={btn.text_color||w.items_text_color||"#fff"} fontSize={(FONT_SIZES[w.items_text_font||"montserrat_12"]||12)*s} fontFamily="sans-serif" textAnchor="middle" dominantBaseline="central">{btn.text||"Btn"}</text>
             </g>;
           });
         })}
@@ -316,10 +316,25 @@ function generateYaml(state) {
   }
   y += "\n";
 
+  // Collect auto style definitions for per-button colors
+  const autoButtonStyles = [];
+  pages.forEach(page => {
+    const collect = (widgets) => widgets.forEach(w => {
+      if (w.type === "buttonmatrix" && w.rows) {
+        w.rows.forEach(row => row.forEach(btn => {
+          if (btn.bg_color || btn.text_color) autoButtonStyles.push(btn);
+        }));
+      }
+      if (w.children?.length) collect(w.children);
+    });
+    collect(page.widgets);
+  });
+
   // Style definitions
-  if (styleDefinitions.length) {
+  const allStyles = [...styleDefinitions, ...autoButtonStyles.map(btn => ({ id: `${btn.id}_style`, ...(btn.bg_color ? { bg_color: btn.bg_color } : {}), ...(btn.text_color ? { text_color: btn.text_color } : {}) }))];
+  if (allStyles.length) {
     y += `${indent(1)}style_definitions:\n`;
-    styleDefinitions.forEach(sd => {
+    allStyles.forEach(sd => {
       y += `${indent(2)}- id: ${sd.id}\n`;
       Object.entries(sd).forEach(([k,v]) => { if(k!=="id"&&v!==undefined&&v!=="") y += `${indent(3)}${k}: ${k.includes("color")?toHex(v):v}\n`; });
     });
@@ -435,6 +450,7 @@ function generateYaml(state) {
           row.forEach(btn => {
             y += `${indent(d+5)}- id: ${btn.id || uid()}\n`;
             y += `${indent(d+6)}text: "${btn.text}"\n`;
+            if (btn.bg_color || btn.text_color) y += `${indent(d+6)}styles: ${btn.id}_style\n`;
           });
         });
       }
@@ -605,6 +621,8 @@ function PropertyEditor({ widget, onChange }) {
           {row.map((btn, bi) => (
             <div key={bi} style={{ display: "flex", gap: 4, marginBottom: 2, alignItems: "center" }}>
               <input value={btn.text} onChange={e => { const nr = [...(widget.rows||[])]; nr[ri] = [...nr[ri]]; nr[ri][bi] = { ...btn, text: e.target.value }; up("rows", nr); }} style={{ flex: 1, background: "#0d1520", border: "1px solid #1e3050", borderRadius: 3, padding: "2px 4px", color: "#c0d8f0", fontSize: 10, fontFamily: "monospace" }}/>
+              <input type="color" value={btn.bg_color || widget.items_bg_color || "#2f8cd8"} onChange={e => { const nr = [...(widget.rows||[])]; nr[ri] = [...nr[ri]]; nr[ri][bi] = { ...btn, bg_color: e.target.value }; up("rows", nr); }} title="Button bg color" style={{ width: 20, height: 20, padding: 1, border: "1px solid #1e3050", borderRadius: 3, cursor: "pointer" }}/>
+              <input type="color" value={btn.text_color || widget.items_text_color || "#ffffff"} onChange={e => { const nr = [...(widget.rows||[])]; nr[ri] = [...nr[ri]]; nr[ri][bi] = { ...btn, text_color: e.target.value }; up("rows", nr); }} title="Button text color" style={{ width: 20, height: 20, padding: 1, border: "1px solid #1e3050", borderRadius: 3, cursor: "pointer" }}/>
               {row.length > 1 && <span onClick={() => { const nr = [...(widget.rows||[])]; nr[ri] = nr[ri].filter((_,i)=>i!==bi); up("rows", nr); }} style={{ color: "#664444", cursor: "pointer", fontSize: 12 }}>×</span>}
             </div>
           ))}
@@ -625,6 +643,7 @@ export default function LVGLDesigner() {
   const [leftPanel, setLeftPanel] = useState("toolbox");
   const [rightPanel, setRightPanel] = useState("props");
   const [showYaml, setShowYaml] = useState(false);
+  const [yamlText, setYamlText] = useState("");
   const [dragInfo, setDragInfo] = useState(null);
   const svgRef = useRef(null);
 
@@ -795,7 +814,7 @@ export default function LVGLDesigner() {
           <select value={S} onChange={e => updateState({ scale: parseFloat(e.target.value) })} style={{ background: "#0d1520", border: "1px solid #1a2a3a", borderRadius: 3, padding: "3px 6px", color: "#8899aa", fontSize: 10 }}>
             {[1, 1.5, 2, 2.5, 3].map(v => <option key={v} value={v}>{v}x</option>)}
           </select>
-          <button onClick={() => setShowYaml(true)} style={{ padding: "4px 12px", fontSize: 11, background: "#1a4020", color: "#6adf6a", border: "1px solid #2a6a3a", borderRadius: 4, cursor: "pointer", fontWeight: 600 }}>⟨/⟩ YAML</button>
+          <button onClick={() => { setYamlText(generateYaml(state)); setShowYaml(true); }} style={{ padding: "4px 12px", fontSize: 11, background: "#1a4020", color: "#6adf6a", border: "1px solid #2a6a3a", borderRadius: 4, cursor: "pointer", fontWeight: 600 }}>⟨/⟩ YAML</button>
         </div>
 
         {/* SVG Canvas */}
@@ -883,13 +902,11 @@ export default function LVGLDesigner() {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderBottom: "1px solid #1a2a3a" }}>
             <span style={{ fontWeight: 700, color: "#8ac4ff", fontSize: 13 }}>Generated ESPHome LVGL YAML</span>
             <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => navigator.clipboard?.writeText(generateYaml(state))} style={{ padding: "4px 12px", background: "#1a4020", color: "#6adf6a", border: "1px solid #2a6a3a", borderRadius: 4, fontSize: 11, cursor: "pointer", fontWeight: 600 }}>📋 Copy</button>
+              <button onClick={() => navigator.clipboard?.writeText(yamlText)} style={{ padding: "4px 12px", background: "#1a4020", color: "#6adf6a", border: "1px solid #2a6a3a", borderRadius: 4, fontSize: 11, cursor: "pointer", fontWeight: 600 }}>📋 Copy</button>
               <button onClick={() => setShowYaml(false)} style={{ padding: "4px 10px", background: "#301a1a", color: "#ff8a8a", border: "1px solid #6a2a2a", borderRadius: 4, fontSize: 11, cursor: "pointer" }}>✕</button>
             </div>
           </div>
-          <pre style={{ flex: 1, overflow: "auto", padding: 16, margin: 0, fontSize: 11, fontFamily: "'JetBrains Mono', 'Fira Code', monospace", color: "#8ac4ff", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
-            {generateYaml(state)}
-          </pre>
+          <textarea value={yamlText} onChange={e => setYamlText(e.target.value)} spellCheck={false} style={{ flex: 1, overflow: "auto", padding: 16, margin: 0, fontSize: 11, fontFamily: "'JetBrains Mono', 'Fira Code', monospace", color: "#8ac4ff", lineHeight: 1.6, whiteSpace: "pre", background: "#0d1520", border: "none", outline: "none", resize: "none" }} />
         </div>
       </div>}
     </div>
