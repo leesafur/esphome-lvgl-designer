@@ -192,7 +192,7 @@ function RenderWidget({ w, s, theme, isSelected, onSelect, onDragStart, parentX 
             const bx = x + (padA + bi * (btnW + padC)) * s;
             const by = y + (padA + ri * (rowH + padR)) * s;
             return <g key={`${ri}-${bi}`}>
-              <rect x={bx} y={by} width={btnW*s} height={rowH*s} rx={(w.items_radius||4)*s} fill={btn.bg_color||w.items_bg_color||"#2f8cd8"} stroke={w.items_border_color||"#0077b3"} strokeWidth={(w.items_border_width||1)*s}/>
+              <rect x={bx} y={by} width={btnW*s} height={rowH*s} rx={(w.items_radius||4)*s} fill={btn.bg_color||w.items_bg_color||"#2f8cd8"} stroke={btn.border_color||w.items_border_color||"#0077b3"} strokeWidth={(w.items_border_width||1)*s}/>
               <text x={bx+btnW*s/2} y={by+rowH*s/2} fill={btn.text_color||w.items_text_color||"#fff"} fontSize={(FONT_SIZES[w.items_text_font||"montserrat_12"]||12)*s} fontFamily="sans-serif" textAnchor="middle" dominantBaseline="central">{btn.text||"Btn"}</text>
             </g>;
           });
@@ -322,7 +322,7 @@ function generateYaml(state) {
     const collect = (widgets) => widgets.forEach(w => {
       if (w.type === "buttonmatrix" && w.rows) {
         w.rows.forEach(row => row.forEach(btn => {
-          if (btn.bg_color || btn.text_color) autoButtonStyles.push(btn);
+          if (btn.bg_color || btn.text_color || btn.border_color) autoButtonStyles.push(btn);
         }));
       }
       if (w.children?.length) collect(w.children);
@@ -331,7 +331,7 @@ function generateYaml(state) {
   });
 
   // Style definitions
-  const allStyles = [...styleDefinitions, ...autoButtonStyles.map(btn => ({ id: `${btn.id}_style`, ...(btn.bg_color ? { bg_color: btn.bg_color } : {}), ...(btn.text_color ? { text_color: btn.text_color } : {}) }))];
+  const allStyles = [...styleDefinitions, ...autoButtonStyles.map(btn => ({ id: `${btn.id}_style`, ...(btn.bg_color ? { bg_color: btn.bg_color } : {}), ...(btn.text_color ? { text_color: btn.text_color } : {}), ...(btn.border_color ? { border_color: btn.border_color } : {}) }))];
   if (allStyles.length) {
     y += `${indent(1)}style_definitions:\n`;
     allStyles.forEach(sd => {
@@ -450,7 +450,7 @@ function generateYaml(state) {
           row.forEach(btn => {
             y += `${indent(d+5)}- id: ${btn.id || uid()}\n`;
             y += `${indent(d+6)}text: "${btn.text}"\n`;
-            if (btn.bg_color || btn.text_color) y += `${indent(d+6)}styles: ${btn.id}_style\n`;
+            if (btn.bg_color || btn.text_color || btn.border_color) y += `${indent(d+6)}styles: ${btn.id}_style\n`;
           });
         });
       }
@@ -623,6 +623,7 @@ function PropertyEditor({ widget, onChange }) {
               <input value={btn.text} onChange={e => { const nr = [...(widget.rows||[])]; nr[ri] = [...nr[ri]]; nr[ri][bi] = { ...btn, text: e.target.value }; up("rows", nr); }} style={{ flex: 1, background: "#0d1520", border: "1px solid #1e3050", borderRadius: 3, padding: "2px 4px", color: "#c0d8f0", fontSize: 10, fontFamily: "monospace" }}/>
               <input type="color" value={btn.bg_color || widget.items_bg_color || "#2f8cd8"} onChange={e => { const nr = [...(widget.rows||[])]; nr[ri] = [...nr[ri]]; nr[ri][bi] = { ...btn, bg_color: e.target.value }; up("rows", nr); }} title="Button bg color" style={{ width: 20, height: 20, padding: 1, border: "1px solid #1e3050", borderRadius: 3, cursor: "pointer" }}/>
               <input type="color" value={btn.text_color || widget.items_text_color || "#ffffff"} onChange={e => { const nr = [...(widget.rows||[])]; nr[ri] = [...nr[ri]]; nr[ri][bi] = { ...btn, text_color: e.target.value }; up("rows", nr); }} title="Button text color" style={{ width: 20, height: 20, padding: 1, border: "1px solid #1e3050", borderRadius: 3, cursor: "pointer" }}/>
+              <input type="color" value={btn.border_color || widget.items_border_color || "#0077b3"} onChange={e => { const nr = [...(widget.rows||[])]; nr[ri] = [...nr[ri]]; nr[ri][bi] = { ...btn, border_color: e.target.value }; up("rows", nr); }} title="Button border color" style={{ width: 20, height: 20, padding: 1, border: "1px solid #1e3050", borderRadius: 3, cursor: "pointer" }}/>
               {row.length > 1 && <span onClick={() => { const nr = [...(widget.rows||[])]; nr[ri] = nr[ri].filter((_,i)=>i!==bi); up("rows", nr); }} style={{ color: "#664444", cursor: "pointer", fontSize: 12 }}>×</span>}
             </div>
           ))}
