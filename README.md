@@ -21,11 +21,21 @@ A browser-based visual UI designer for [ESPHome](https://esphome.io) LVGL displa
 ## Quick Start
 
 ```bash
+cd esphome-lvgl-designer
 npm install
 npm run dev
 ```
 
 Then open `http://localhost:5173` in your browser.
+
+## If you haven't cloned it yet
+
+```bash
+git clone https://github.com/leesafur/esphome-lvgl-designer.git
+cd esphome-lvgl-designer
+npm install
+npm run dev
+```
 
 ## Build for Production
 
