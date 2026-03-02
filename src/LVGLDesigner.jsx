@@ -30,9 +30,9 @@ const FLEX_CROSS = ["start","end","center","stretch"];
 // ---- Widget definitions ----
 const WIDGET_DEFS = {
   obj: { label: "Container", icon: "☐", defaults: { width: 200, height: 100, bg_color: "#1a1a2e", bg_opa: "cover", border_width: 1, border_color: "#334466", radius: 0, pad_all: 4, layout_type: "none" }},
-  label: { label: "Label", icon: "A", defaults: { text: "Label", text_color: "#ffffff", text_font: "montserrat_14", text_align: "left", width: 0, height: 0 }},
-  button: { label: "Button", icon: "⬜", defaults: { width: 100, height: 40, bg_color: "#2a2a4a", border_color: "#4a90d0", border_width: 2, radius: 6, text: "Button", text_color: "#ffffff", text_font: "montserrat_14" }},
-  buttonmatrix: { label: "Button Matrix", icon: "⊞", defaults: { width: 220, height: 80, bg_color: "#1a1a2e", border_width: 0, pad_all: 4, pad_column: 4, pad_row: 4, items_bg_color: "#2f8cd8", items_text_color: "#ffffff", items_border_color: "#0077b3", items_border_width: 1, items_radius: 4, items_text_font: "montserrat_12", rows: [[{text:"Btn1",id:"b1"},{text:"Btn2",id:"b2"},{text:"Btn3",id:"b3"}]] }},
+  label: { label: "Label", icon: "A", defaults: { text: "Label", text_font: "montserrat_14", text_align: "left", width: 0, height: 0 }},
+  button: { label: "Button", icon: "⬜", defaults: { width: 100, height: 40, border_width: 2, text: "Button", text_font: "montserrat_14" }},
+  buttonmatrix: { label: "Button Matrix", icon: "⊞", defaults: { width: 220, height: 80, border_width: 0, pad_all: 4, pad_column: 4, pad_row: 4, items_border_width: 1, items_radius: 4, items_text_font: "montserrat_12", rows: [[{text:"Btn1",id:"b1"},{text:"Btn2",id:"b2"},{text:"Btn3",id:"b3"}]] }},
   arc: { label: "Arc", icon: "◔", defaults: { width: 120, height: 120, value: 70, min_value: 0, max_value: 100, start_angle: 135, end_angle: 45, arc_color: "#4a90d0", arc_width: 10, indicator_color: "#80c0ff", indicator_width: 10, bg_opa: "transp" }},
   bar: { label: "Bar", icon: "▬", defaults: { width: 180, height: 20, value: 60, min_value: 0, max_value: 100, bg_color: "#333355", indicator_color: "#4a90d0", radius: 4 }},
   switch: { label: "Switch", icon: "⊘", defaults: { width: 50, height: 26, checked: false, bg_color: "#555577", indicator_color: "#4a90d0" }},
@@ -55,7 +55,7 @@ function createDefaultState() {
     styleDefinitions: [
       { id: "header_footer", bg_color: "#16213e", text_color: "#ffffff", text_font: "montserrat_14", border_width: 0, radius: 0, pad_all: 0 },
     ],
-    navFooter: { enabled: true, height: 36, buttons: [
+    navFooter: { enabled: true, height: 36, radius: 0, buttons: [
       { id: "page_prev", text: "◀", action: "lvgl.page.previous" },
       { id: "page_home", text: "⌂", action: "lvgl.page.show: main_page" },
       { id: "page_next", text: "▶", action: "lvgl.page.next" },
@@ -155,14 +155,14 @@ function RenderWidget({ w, s, theme, isSelected, onSelect, onDragStart, parentX 
       const tw = ww || 200 * s;
       return <g onMouseDown={handleMouseDown} style={{cursor:"pointer"}}>
         {sel && <rect x={x-2} y={y-2} width={tw+4} height={fs*s+6} fill="none" stroke="#00ff88" strokeWidth={2} strokeDasharray="5 3"/>}
-        <text x={x} y={y + 2} fill={w.text_color || "#fff"} fontSize={fs * s} fontFamily="sans-serif" dominantBaseline="hanging">{w.text || "Label"}</text>
+        <text x={x} y={y + 2} fill={w.text_color || theme?.label?.text_color || "#fff"} fontSize={fs * s} fontFamily="sans-serif" dominantBaseline="hanging">{w.text || "Label"}</text>
       </g>;
     }
     case "button": {
       const tc = w.text_color || theme?.button?.text_color || "#fff";
       return <g onMouseDown={handleMouseDown} style={{cursor:"pointer"}}>
         {sel}
-        <rect x={x} y={y} width={ww} height={hh} rx={(w.radius||6)*s} fill={w.bg_color || theme?.button?.bg_color || "#2a4a6a"} stroke={w.border_color || theme?.button?.border_color || "#4a90d0"} strokeWidth={(w.border_width??2)*s}/>
+        <rect x={x} y={y} width={ww} height={hh} rx={(w.radius ?? theme?.button?.radius ?? 6)*s} fill={w.bg_color || theme?.button?.bg_color || "#2f8cd8"} stroke={w.border_color || theme?.button?.border_color || "#0077b3"} strokeWidth={(w.border_width??2)*s}/>
         <text x={x+ww/2} y={y+hh/2} fill={tc} fontSize={fs*s} fontFamily="sans-serif" textAnchor="middle" dominantBaseline="central" fontWeight="500">{w.text||"Button"}</text>
       </g>;
     }
@@ -193,8 +193,8 @@ function RenderWidget({ w, s, theme, isSelected, onSelect, onDragStart, parentX 
             const bx = x + (padA + bi * (btnW + padC)) * s;
             const by = y + (padA + ri * (rowH + padR)) * s;
             return <g key={`${ri}-${bi}`}>
-              <rect x={bx} y={by} width={btnW*s} height={rowH*s} rx={(w.items_radius||4)*s} fill={btn.bg_color||w.items_bg_color||"#2f8cd8"} stroke={btn.border_color||w.items_border_color||"#0077b3"} strokeWidth={(w.items_border_width||1)*s}/>
-              <text x={bx+btnW*s/2} y={by+rowH*s/2} fill={btn.text_color||w.items_text_color||"#fff"} fontSize={(FONT_SIZES[w.items_text_font||"montserrat_12"]||12)*s} fontFamily="sans-serif" textAnchor="middle" dominantBaseline="central">{btn.text||"Btn"}</text>
+              <rect x={bx} y={by} width={btnW*s} height={rowH*s} rx={(w.items_radius||4)*s} fill={btn.bg_color||w.items_bg_color||theme?.buttonmatrix?.items_bg_color||"#2f8cd8"} stroke={btn.border_color||w.items_border_color||theme?.buttonmatrix?.items_border_color||"#0077b3"} strokeWidth={(w.items_border_width||1)*s}/>
+              <text x={bx+btnW*s/2} y={by+rowH*s/2} fill={btn.text_color||w.items_text_color||theme?.buttonmatrix?.items_text_color||"#fff"} fontSize={(FONT_SIZES[w.items_text_font||"montserrat_12"]||12)*s} fontFamily="sans-serif" textAnchor="middle" dominantBaseline="central">{btn.text||"Btn"}</text>
             </g>;
           });
         })}
@@ -350,6 +350,7 @@ function generateYaml(state) {
     y += `${indent(5)}width: ${displaySize.w}\n`;
     y += `${indent(5)}height: ${navFooter.height || 36}\n`;
     y += `${indent(5)}styles: header_footer\n`;
+    if (navFooter.radius) y += `${indent(5)}radius: ${navFooter.radius}\n`;
     y += `${indent(5)}pad_all: 0\n`;
     y += `${indent(5)}outline_width: 0\n`;
     y += `${indent(5)}id: top_layer\n`;
@@ -888,7 +889,7 @@ export default function LVGLDesigner() {
   const footerH = navFooter.enabled ? (navFooter.height || 36) : 0;
   const footerStyle = styleDefinitions.find(s => s.id === "header_footer") || {};
   const footerBg = footerStyle.bg_color || "#16213e";
-  const footerRadius = (footerStyle.radius || 0) * S;
+  const footerRadius = (navFooter.radius || 0) * S;
 
   return (
     <div style={{ display: "flex", height: "100vh", background: "#080c12", fontFamily: "'JetBrains Mono', 'Fira Code', 'SF Mono', monospace", color: "#c0d0e0", overflow: "hidden" }}>
@@ -926,6 +927,7 @@ export default function LVGLDesigner() {
               <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.5, color: "#6b8aaf", marginBottom: 6, marginTop: 12 }}>Nav Footer</div>
               <PropField label="enabled" value={navFooter.enabled} onChange={v => updateState({ navFooter: { ...navFooter, enabled: v }})} type="checkbox"/>
               {navFooter.enabled && <PropField label="height" value={navFooter.height || 36} onChange={v => updateState({ navFooter: { ...navFooter, height: v }})} type="number"/>}
+              {navFooter.enabled && <PropField label="radius" value={navFooter.radius ?? 0} onChange={v => updateState({ navFooter: { ...navFooter, radius: v }})} type="number"/>}
               {navFooter.enabled && navFooter.buttons.map((b, i) => (
                 <PropField key={i} label={b.id} value={b.text} onChange={v => {
                   const nb = [...navFooter.buttons]; nb[i] = { ...b, text: v };
