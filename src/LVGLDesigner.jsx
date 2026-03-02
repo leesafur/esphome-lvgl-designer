@@ -55,7 +55,7 @@ function createDefaultState() {
     styleDefinitions: [
       { id: "header_footer", bg_color: "#16213e", text_color: "#ffffff", text_font: "montserrat_14", border_width: 0, radius: 0, pad_all: 0 },
     ],
-    navFooter: { enabled: true, buttons: [
+    navFooter: { enabled: true, height: 36, buttons: [
       { id: "page_prev", text: "◀", action: "lvgl.page.previous" },
       { id: "page_home", text: "⌂", action: "lvgl.page.show: main_page" },
       { id: "page_next", text: "▶", action: "lvgl.page.next" },
@@ -347,6 +347,8 @@ function generateYaml(state) {
     y += `${indent(1)}top_layer:\n${indent(2)}widgets:\n`;
     y += `${indent(3)}- buttonmatrix:\n`;
     y += `${indent(5)}align: bottom_mid\n`;
+    y += `${indent(5)}width: ${displaySize.w}\n`;
+    y += `${indent(5)}height: ${navFooter.height || 36}\n`;
     y += `${indent(5)}styles: header_footer\n`;
     y += `${indent(5)}pad_all: 0\n`;
     y += `${indent(5)}outline_width: 0\n`;
@@ -760,7 +762,7 @@ export default function LVGLDesigner() {
     try { localStorage.setItem("lvgl_designer_state", JSON.stringify(state)); } catch(e) {}
   }, [state]);
 
-  const { displaySize, scale: S, pages, selectedPage, selectedWidget, theme, navFooter } = state;
+  const { displaySize, scale: S, pages, selectedPage, selectedWidget, theme, navFooter, styleDefinitions } = state;
   const page = pages[selectedPage] || pages[0];
   const W = displaySize.w * S;
   const H = displaySize.h * S;
@@ -883,7 +885,10 @@ export default function LVGLDesigner() {
 
   // ---- Render ----
   const titleBarH = page.titleBar?.enabled ? (page.titleBar.height || 36) : 0;
-  const footerH = navFooter.enabled ? 36 : 0;
+  const footerH = navFooter.enabled ? (navFooter.height || 36) : 0;
+  const footerStyle = styleDefinitions.find(s => s.id === "header_footer") || {};
+  const footerBg = footerStyle.bg_color || "#16213e";
+  const footerRadius = (footerStyle.radius || 0) * S;
 
   return (
     <div style={{ display: "flex", height: "100vh", background: "#080c12", fontFamily: "'JetBrains Mono', 'Fira Code', 'SF Mono', monospace", color: "#c0d0e0", overflow: "hidden" }}>
@@ -920,6 +925,7 @@ export default function LVGLDesigner() {
             <div>
               <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.5, color: "#6b8aaf", marginBottom: 6, marginTop: 12 }}>Nav Footer</div>
               <PropField label="enabled" value={navFooter.enabled} onChange={v => updateState({ navFooter: { ...navFooter, enabled: v }})} type="checkbox"/>
+              {navFooter.enabled && <PropField label="height" value={navFooter.height || 36} onChange={v => updateState({ navFooter: { ...navFooter, height: v }})} type="number"/>}
               {navFooter.enabled && navFooter.buttons.map((b, i) => (
                 <PropField key={i} label={b.id} value={b.text} onChange={v => {
                   const nb = [...navFooter.buttons]; nb[i] = { ...b, text: v };
@@ -962,6 +968,9 @@ export default function LVGLDesigner() {
         <div style={{ border: "1px solid #1a2a3a", borderRadius: 6, overflow: "hidden", boxShadow: "0 4px 40px rgba(0,0,0,0.5)", background: "#000", flexShrink: 0 }}>
           <svg ref={svgRef} width={W} height={H} viewBox={`0 0 ${W} ${H}`} onClick={() => updateState({ selectedWidget: null })}>
             <rect width={W} height={H} fill={page.bgColor || "#000"}/>
+            {/* Grid overlay — rendered before chrome so title bar and footer appear on top */}
+            <defs><pattern id="grid" width={10*S} height={10*S} patternUnits="userSpaceOnUse"><rect width={10*S} height={10*S} fill="none" stroke="#ffffff" strokeWidth={0.3} strokeOpacity={0.06}/></pattern></defs>
+            <rect width={W} height={H} fill="url(#grid)" pointerEvents="none"/>
 
             {/* Title bar */}
             {page.titleBar?.enabled && <g>
@@ -976,19 +985,15 @@ export default function LVGLDesigner() {
 
             {/* Nav footer */}
             {navFooter.enabled && <g>
-              <rect x={0} y={H - footerH * S} width={W} height={footerH * S} fill="#16213e"/>
+              <rect x={0} y={H - footerH * S} width={W} height={footerH * S} rx={footerRadius} fill={footerBg}/>
               {navFooter.buttons.map((b, i) => {
                 const bw = W / navFooter.buttons.length;
                 return <g key={i}>
-                  <rect x={i * bw} y={H - footerH * S} width={bw} height={footerH * S} fill="#16213e" stroke="#1e3a5f" strokeWidth={S * 0.5}/>
-                  <text x={i * bw + bw / 2} y={H - footerH * S / 2} fill="#fff" fontSize={14*S} fontFamily="sans-serif" textAnchor="middle" dominantBaseline="central">{b.text}</text>
+                  <rect x={i * bw} y={H - footerH * S} width={bw} height={footerH * S} rx={footerRadius} fill={footerBg} stroke="#1e3a5f" strokeWidth={S * 0.5}/>
+                  <text x={i * bw + bw / 2} y={H - (footerH * S) / 2} fill={footerStyle.text_color || "#fff"} fontSize={14*S} fontFamily="sans-serif" textAnchor="middle" dominantBaseline="central">{b.text}</text>
                 </g>;
               })}
             </g>}
-
-            {/* Grid overlay */}
-            <defs><pattern id="grid" width={10*S} height={10*S} patternUnits="userSpaceOnUse"><rect width={10*S} height={10*S} fill="none" stroke="#ffffff" strokeWidth={0.3} strokeOpacity={0.06}/></pattern></defs>
-            <rect width={W} height={H} fill="url(#grid)" pointerEvents="none"/>
           </svg>
         </div>
         <div style={{ fontSize: 9, color: "#334", marginTop: 6, textAlign: "center" }}>
