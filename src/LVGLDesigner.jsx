@@ -55,7 +55,7 @@ function createDefaultState() {
     styleDefinitions: [
       { id: "header_footer", bg_color: "#16213e", text_color: "#ffffff", text_font: "montserrat_14", border_width: 0, radius: 0, pad_all: 0 },
     ],
-    navFooter: { enabled: true, height: 36, radius: 0, buttons: [
+    navFooter: { enabled: true, height: 36, radius: 0, bg_color: "#16213e", text_color: "#ffffff", buttons: [
       { id: "page_prev", text: "◀", action: "lvgl.page.previous" },
       { id: "page_home", text: "⌂", action: "lvgl.page.show: main_page" },
       { id: "page_next", text: "▶", action: "lvgl.page.next" },
@@ -351,10 +351,12 @@ function generateYaml(state) {
     y += `${indent(5)}height: ${navFooter.height || 36}\n`;
     y += `${indent(5)}styles: header_footer\n`;
     if (navFooter.radius) y += `${indent(5)}radius: ${navFooter.radius}\n`;
+    if (navFooter.bg_color) y += `${indent(5)}bg_color: ${toHex(navFooter.bg_color)}\n`;
     y += `${indent(5)}pad_all: 0\n`;
     y += `${indent(5)}outline_width: 0\n`;
     y += `${indent(5)}id: top_layer\n`;
     y += `${indent(5)}items:\n${indent(6)}styles: header_footer\n`;
+    if (navFooter.text_color) y += `${indent(6)}text_color: ${toHex(navFooter.text_color)}\n`;
     y += `${indent(5)}rows:\n${indent(6)}- buttons:\n`;
     navFooter.buttons.forEach(b => {
       y += `${indent(7)}- id: ${b.id}\n`;
@@ -888,7 +890,8 @@ export default function LVGLDesigner() {
   const titleBarH = page.titleBar?.enabled ? (page.titleBar.height || 36) : 0;
   const footerH = navFooter.enabled ? (navFooter.height || 36) : 0;
   const footerStyle = styleDefinitions.find(s => s.id === "header_footer") || {};
-  const footerBg = footerStyle.bg_color || "#16213e";
+  const footerBg = navFooter.bg_color || footerStyle.bg_color || "#16213e";
+  const footerText = navFooter.text_color || footerStyle.text_color || "#ffffff";
   const footerRadius = (navFooter.radius || 0) * S;
 
   return (
@@ -928,6 +931,8 @@ export default function LVGLDesigner() {
               <PropField label="enabled" value={navFooter.enabled} onChange={v => updateState({ navFooter: { ...navFooter, enabled: v }})} type="checkbox"/>
               {navFooter.enabled && <PropField label="height" value={navFooter.height || 36} onChange={v => updateState({ navFooter: { ...navFooter, height: v }})} type="number"/>}
               {navFooter.enabled && <PropField label="radius" value={navFooter.radius ?? 0} onChange={v => updateState({ navFooter: { ...navFooter, radius: v }})} type="number"/>}
+              {navFooter.enabled && <PropField label="bg_color" value={navFooter.bg_color || "#16213e"} onChange={v => updateState({ navFooter: { ...navFooter, bg_color: v }})} type="color"/>}
+              {navFooter.enabled && <PropField label="text_color" value={navFooter.text_color || "#ffffff"} onChange={v => updateState({ navFooter: { ...navFooter, text_color: v }})} type="color"/>}
               {navFooter.enabled && navFooter.buttons.map((b, i) => (
                 <PropField key={i} label={b.id} value={b.text} onChange={v => {
                   const nb = [...navFooter.buttons]; nb[i] = { ...b, text: v };
@@ -991,8 +996,8 @@ export default function LVGLDesigner() {
               {navFooter.buttons.map((b, i) => {
                 const bw = W / navFooter.buttons.length;
                 return <g key={i}>
-                  <rect x={i * bw} y={H - footerH * S} width={bw} height={footerH * S} rx={footerRadius} fill={footerBg} stroke="#1e3a5f" strokeWidth={S * 0.5}/>
-                  <text x={i * bw + bw / 2} y={H - (footerH * S) / 2} fill={footerStyle.text_color || "#fff"} fontSize={14*S} fontFamily="sans-serif" textAnchor="middle" dominantBaseline="central">{b.text}</text>
+                  <rect x={i * bw} y={H - footerH * S} width={bw} height={footerH * S} rx={footerRadius} fill={footerBg} stroke={footerText} strokeWidth={S * 0.3} strokeOpacity={0.3}/>
+                  <text x={i * bw + bw / 2} y={H - (footerH * S) / 2} fill={footerText} fontSize={14*S} fontFamily="sans-serif" textAnchor="middle" dominantBaseline="central">{b.text}</text>
                 </g>;
               })}
             </g>}
