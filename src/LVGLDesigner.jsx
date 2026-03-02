@@ -53,9 +53,9 @@ function createDefaultState() {
       buttonmatrix: { bg_opa: "transp", border_width: 0, text_color: "#ffffff", items_bg_color: "#2f8cd8", items_bg_grad_color: "#005782", items_border_color: "#0077b3", items_border_width: 1, items_text_color: "#ffffff" },
     },
     styleDefinitions: [
-      { id: "header_footer", bg_color: "#16213e", text_color: "#ffffff", text_font: "montserrat_14", border_width: 0, radius: 0, pad_all: 0 },
+      { id: "header_footer", bg_color: "#2f8cd8", bg_grad_color: "#005782", bg_grad_dir: "VER", bg_opa: "COVER", border_opa: "TRANSP", border_color: "#0077b3", text_color: "#ffffff", radius: 0, pad_all: 0, pad_row: 0, pad_column: 0, height: 30, width: "100%" },
     ],
-    navFooter: { enabled: true, height: 36, radius: 0, bg_color: "#16213e", text_color: "#ffffff", buttons: [
+    navFooter: { enabled: true, buttons: [
       { id: "page_prev", text: "◀", action: "lvgl.page.previous" },
       { id: "page_home", text: "⌂", action: "lvgl.page.show: main_page" },
       { id: "page_next", text: "▶", action: "lvgl.page.next" },
@@ -347,16 +347,10 @@ function generateYaml(state) {
     y += `${indent(1)}top_layer:\n${indent(2)}widgets:\n`;
     y += `${indent(3)}- buttonmatrix:\n`;
     y += `${indent(5)}align: bottom_mid\n`;
-    y += `${indent(5)}width: ${displaySize.w}\n`;
-    y += `${indent(5)}height: ${navFooter.height || 36}\n`;
     y += `${indent(5)}styles: header_footer\n`;
-    if (navFooter.radius) y += `${indent(5)}radius: ${navFooter.radius}\n`;
-    if (navFooter.bg_color) y += `${indent(5)}bg_color: ${toHex(navFooter.bg_color)}\n`;
-    y += `${indent(5)}pad_all: 0\n`;
     y += `${indent(5)}outline_width: 0\n`;
     y += `${indent(5)}id: top_layer\n`;
     y += `${indent(5)}items:\n${indent(6)}styles: header_footer\n`;
-    if (navFooter.text_color) y += `${indent(6)}text_color: ${toHex(navFooter.text_color)}\n`;
     y += `${indent(5)}rows:\n${indent(6)}- buttons:\n`;
     navFooter.buttons.forEach(b => {
       y += `${indent(7)}- id: ${b.id}\n`;
@@ -888,11 +882,11 @@ export default function LVGLDesigner() {
 
   // ---- Render ----
   const titleBarH = page.titleBar?.enabled ? (page.titleBar.height || 36) : 0;
-  const footerH = navFooter.enabled ? (navFooter.height || 36) : 0;
   const footerStyle = styleDefinitions.find(s => s.id === "header_footer") || {};
-  const footerBg = navFooter.bg_color || footerStyle.bg_color || "#16213e";
-  const footerText = navFooter.text_color || footerStyle.text_color || "#ffffff";
-  const footerRadius = (navFooter.radius || 0) * S;
+  const footerH = navFooter.enabled ? (footerStyle.height || 36) : 0;
+  const footerBg = footerStyle.bg_color || "#2f8cd8";
+  const footerText = footerStyle.text_color || "#ffffff";
+  const footerRadius = (footerStyle.radius || 0) * S;
 
   return (
     <div style={{ display: "flex", height: "100vh", background: "#080c12", fontFamily: "'JetBrains Mono', 'Fira Code', 'SF Mono', monospace", color: "#c0d0e0", overflow: "hidden" }}>
@@ -929,10 +923,6 @@ export default function LVGLDesigner() {
             <div>
               <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.5, color: "#6b8aaf", marginBottom: 6, marginTop: 12 }}>Nav Footer</div>
               <PropField label="enabled" value={navFooter.enabled} onChange={v => updateState({ navFooter: { ...navFooter, enabled: v }})} type="checkbox"/>
-              {navFooter.enabled && <PropField label="height" value={navFooter.height || 36} onChange={v => updateState({ navFooter: { ...navFooter, height: v }})} type="number"/>}
-              {navFooter.enabled && <PropField label="radius" value={navFooter.radius ?? 0} onChange={v => updateState({ navFooter: { ...navFooter, radius: v }})} type="number"/>}
-              {navFooter.enabled && <PropField label="bg_color" value={navFooter.bg_color || "#16213e"} onChange={v => updateState({ navFooter: { ...navFooter, bg_color: v }})} type="color"/>}
-              {navFooter.enabled && <PropField label="text_color" value={navFooter.text_color || "#ffffff"} onChange={v => updateState({ navFooter: { ...navFooter, text_color: v }})} type="color"/>}
               {navFooter.enabled && navFooter.buttons.map((b, i) => (
                 <PropField key={i} label={b.id} value={b.text} onChange={v => {
                   const nb = [...navFooter.buttons]; nb[i] = { ...b, text: v };
@@ -940,6 +930,28 @@ export default function LVGLDesigner() {
                 }}/>
               ))}
             </div>
+            {(() => {
+              const hfIdx = styleDefinitions.findIndex(s => s.id === "header_footer");
+              const hf = styleDefinitions[hfIdx] || {};
+              const upHf = (k, v) => {
+                const d = [...styleDefinitions]; d[hfIdx] = { ...hf, [k]: v };
+                updateState({ styleDefinitions: d });
+              };
+              return <div style={{ marginTop: 12 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.5, color: "#6b8aaf", marginBottom: 6 }}>Header/Footer Style</div>
+                <div style={{ fontSize: 9, color: "#4a6a8a", marginBottom: 6 }}>Applied to nav footer background and buttons</div>
+                <PropField label="bg_color" value={hf.bg_color} onChange={v => upHf("bg_color", v)} type="color"/>
+                <PropField label="bg_grad_color" value={hf.bg_grad_color} onChange={v => upHf("bg_grad_color", v)} type="color"/>
+                <PropField label="bg_grad_dir" value={hf.bg_grad_dir} onChange={v => upHf("bg_grad_dir", v)} type="select" options={["VER","HOR","NONE"]}/>
+                <PropField label="text_color" value={hf.text_color} onChange={v => upHf("text_color", v)} type="color"/>
+                <PropField label="border_color" value={hf.border_color} onChange={v => upHf("border_color", v)} type="color"/>
+                <PropField label="radius" value={hf.radius ?? 0} onChange={v => upHf("radius", v)} type="number"/>
+                <PropField label="height" value={hf.height ?? 30} onChange={v => upHf("height", v)} type="number"/>
+                <PropField label="pad_all" value={hf.pad_all ?? 0} onChange={v => upHf("pad_all", v)} type="number"/>
+                <PropField label="pad_row" value={hf.pad_row ?? 0} onChange={v => upHf("pad_row", v)} type="number"/>
+                <PropField label="pad_column" value={hf.pad_column ?? 0} onChange={v => upHf("pad_column", v)} type="number"/>
+              </div>;
+            })()}
           </div>}
         </div>
       </div>
