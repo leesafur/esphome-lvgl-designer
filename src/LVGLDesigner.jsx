@@ -353,9 +353,9 @@ function generateYaml(state) {
     y += `${indent(5)}items:\n${indent(6)}styles: header_footer\n`;
     y += `${indent(5)}rows:\n${indent(6)}- buttons:\n`;
     navFooter.buttons.forEach(b => {
-      y += `${indent(7)}- id: ${b.id}\n`;
-      y += `${indent(8)}text: "${b.text}"\n`;
-      y += `${indent(8)}on_press:\n${indent(9)}then:\n${indent(10)}${b.action}:\n`;
+      y += `${indent(8)}- id: ${b.id}\n`;
+      y += `${indent(9)}text: "${b.text}"\n`;
+      y += `${indent(9)}on_press:\n${indent(10)}then:\n${indent(11)}${b.action}:\n`;
     });
     y += "\n";
   }
@@ -750,6 +750,7 @@ export default function LVGLDesigner() {
   const [rightPanel, setRightPanel] = useState("props");
   const [showYaml, setShowYaml] = useState(false);
   const [yamlText, setYamlText] = useState("");
+  const [yamlError, setYamlError] = useState("");
   const [dragInfo, setDragInfo] = useState(null);
   const svgRef = useRef(null);
   const importRef = useRef(null);
@@ -786,8 +787,8 @@ export default function LVGLDesigner() {
   }, []);
 
   const applyYaml = useCallback(() => {
-    try { setState(yamlToState(yamlText, state)); setShowYaml(false); }
-    catch(err) { alert("Could not apply YAML:\n" + err.message); }
+    try { setState(yamlToState(yamlText, state)); setYamlError(""); setShowYaml(false); }
+    catch(err) { setYamlError(err.message); }
   }, [yamlText, state]);
 
   const findWidget = useCallback((widgets, uid) => {
@@ -1072,7 +1073,8 @@ export default function LVGLDesigner() {
               <button onClick={() => setShowYaml(false)} style={{ padding: "4px 10px", background: "#301a1a", color: "#ff8a8a", border: "1px solid #6a2a2a", borderRadius: 4, fontSize: 11, cursor: "pointer" }}>✕</button>
             </div>
           </div>
-          <textarea value={yamlText} onChange={e => setYamlText(e.target.value)} spellCheck={false} style={{ flex: 1, minHeight: 0, overflow: "auto", padding: 16, margin: 0, fontSize: 11, fontFamily: "'JetBrains Mono', 'Fira Code', monospace", color: "#8ac4ff", lineHeight: 1.6, whiteSpace: "pre", background: "#0d1520", border: "none", outline: "none", resize: "none" }} />
+          {yamlError && <div style={{ padding: "8px 16px", background: "#2a0a0a", borderBottom: "1px solid #6a2a2a", color: "#ff8a8a", fontSize: 11, fontFamily: "monospace", userSelect: "text", whiteSpace: "pre-wrap" }}>⚠ {yamlError}</div>}
+          <textarea value={yamlText} onChange={e => { setYamlText(e.target.value); setYamlError(""); }} spellCheck={false} style={{ flex: 1, minHeight: 0, overflow: "auto", padding: 16, margin: 0, fontSize: 11, fontFamily: "'JetBrains Mono', 'Fira Code', monospace", color: "#8ac4ff", lineHeight: 1.6, whiteSpace: "pre", background: "#0d1520", border: "none", outline: "none", resize: "none" }} />
         </div>
       </div>}
     </div>
