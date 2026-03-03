@@ -397,7 +397,7 @@ function generateYaml(state) {
       const d = depth;
       y += `${indent(d)}- ${widget.type}:\n`;
       if (widget.id) y += `${indent(d+2)}id: ${widget.id}\n`;
-      const skipKeys = new Set(["uid","type","id","children","rows","_cx","_cy","_mainSz","_crossSz","_grow","text","layout_type","flex_flow","flex_align_main","flex_align_cross","flex_align_track","flex_grow","items_bg_color","items_text_color","items_border_color","items_border_width","items_radius","items_text_font","checked","value","min_value","max_value","start_angle","end_angle","arc_color","arc_width","indicator_color","indicator_width","knob_color","bg_opa","options"]);
+      const skipKeys = new Set(["uid","type","id","x","y","width","height","children","rows","_cx","_cy","_mainSz","_crossSz","_grow","text","layout_type","flex_flow","flex_align_main","flex_align_cross","flex_align_track","flex_grow","items_bg_color","items_text_color","items_border_color","items_border_width","items_radius","items_text_font","checked","value","min_value","max_value","start_angle","end_angle","arc_color","arc_width","indicator_color","indicator_width","knob_color","bg_opa","options"]);
       
       // Position
       if (widget.x !== undefined && widget.x !== 0) y += `${indent(d+2)}x: ${widget.x}\n`;
