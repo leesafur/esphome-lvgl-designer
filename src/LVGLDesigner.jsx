@@ -379,17 +379,16 @@ function generateYaml(state) {
     if (page.titleBar?.enabled) {
       const tb = page.titleBar;
       y += `${indent(4)}- obj:\n`;
-      y += `${indent(6)}x: 0\n${indent(6)}y: 0\n`;
-      y += `${indent(6)}width: ${displaySize.w}\n`;
-      y += `${indent(6)}height: ${tb.height || 36}\n`;
-      y += `${indent(6)}bg_color: ${toHex(tb.bg_color)}\n`;
-      y += `${indent(6)}border_width: 0\n${indent(6)}radius: 0\n${indent(6)}pad_all: 0\n`;
+      y += `${indent(6)}styles: header_footer\n`;
+      y += `${indent(6)}y: 0\n`;
+      y += `${indent(6)}align: top_mid\n`;
+      y += `${indent(6)}pad_all: 0\n`;
       y += `${indent(6)}widgets:\n`;
       y += `${indent(7)}- label:\n`;
       y += `${indent(9)}text: "${tb.text}"\n`;
       y += `${indent(9)}align: center\n`;
       y += `${indent(9)}text_font: montserrat_14\n`;
-      y += `${indent(9)}text_color: ${toHex(tb.text_color)}\n`;
+      y += `${indent(9)}text_color: ${toHex(hfStyle.text_color || "#ffffff")}\n`;
     }
 
     // Widgets
@@ -883,12 +882,13 @@ export default function LVGLDesigner() {
   }, [selectedWidget, page, pages, selectedPage, findWidget, updateWidgetInList, deleteWidget]);
 
   // ---- Render ----
-  const titleBarH = page.titleBar?.enabled ? (page.titleBar.height || 36) : 0;
-  const footerStyle = styleDefinitions.find(s => s.id === "header_footer") || {};
-  const footerH = navFooter.enabled ? (footerStyle.height || 36) : 0;
-  const footerBg = footerStyle.bg_color || "#2f8cd8";
-  const footerText = footerStyle.text_color || "#ffffff";
-  const footerRadius = (footerStyle.radius || 0) * S;
+  const hfStyle = styleDefinitions.find(s => s.id === "header_footer") || {};
+  const hfBg = hfStyle.bg_color || "#2f8cd8";
+  const hfText = hfStyle.text_color || "#ffffff";
+  const hfRadius = (hfStyle.radius || 0) * S;
+  const hfHeight = hfStyle.height || 36;
+  const titleBarH = page.titleBar?.enabled ? hfHeight : 0;
+  const footerH = navFooter.enabled ? hfHeight : 0;
 
   return (
     <div style={{ display: "flex", height: "100vh", background: "#080c12", fontFamily: "'JetBrains Mono', 'Fira Code', 'SF Mono', monospace", color: "#c0d0e0", overflow: "hidden" }}>
@@ -995,8 +995,8 @@ export default function LVGLDesigner() {
 
             {/* Title bar */}
             {page.titleBar?.enabled && <g>
-              <rect x={0} y={0} width={W} height={titleBarH * S} fill={page.titleBar.bg_color || "#16213e"}/>
-              <text x={W/2} y={titleBarH*S/2} fill={page.titleBar.text_color||"#fff"} fontSize={13*S} fontFamily="sans-serif" textAnchor="middle" dominantBaseline="central" fontWeight="600">{page.titleBar.text}</text>
+              <rect x={0} y={0} width={W} height={titleBarH * S} rx={hfRadius} fill={hfBg}/>
+              <text x={W/2} y={titleBarH*S/2} fill={hfText} fontSize={13*S} fontFamily="sans-serif" textAnchor="middle" dominantBaseline="central" fontWeight="600">{page.titleBar.text}</text>
             </g>}
 
             {/* Widgets */}
@@ -1006,12 +1006,12 @@ export default function LVGLDesigner() {
 
             {/* Nav footer */}
             {navFooter.enabled && <g>
-              <rect x={0} y={H - footerH * S} width={W} height={footerH * S} rx={footerRadius} fill={footerBg}/>
+              <rect x={0} y={H - footerH * S} width={W} height={footerH * S} rx={hfRadius} fill={hfBg}/>
               {navFooter.buttons.map((b, i) => {
                 const bw = W / navFooter.buttons.length;
                 return <g key={i}>
-                  <rect x={i * bw} y={H - footerH * S} width={bw} height={footerH * S} rx={footerRadius} fill={footerBg} stroke={footerText} strokeWidth={S * 0.3} strokeOpacity={0.3}/>
-                  <text x={i * bw + bw / 2} y={H - (footerH * S) / 2} fill={footerText} fontSize={14*S} fontFamily="sans-serif" textAnchor="middle" dominantBaseline="central">{b.text}</text>
+                  <rect x={i * bw} y={H - footerH * S} width={bw} height={footerH * S} rx={hfRadius} fill={hfBg} stroke={hfText} strokeWidth={S * 0.3} strokeOpacity={0.3}/>
+                  <text x={i * bw + bw / 2} y={H - (footerH * S) / 2} fill={hfText} fontSize={14*S} fontFamily="sans-serif" textAnchor="middle" dominantBaseline="central">{b.text}</text>
                 </g>;
               })}
             </g>}
@@ -1053,9 +1053,7 @@ export default function LVGLDesigner() {
             <PropField label="enabled" value={page.titleBar?.enabled} onChange={v => { const np = [...pages]; np[selectedPage] = { ...page, titleBar: { ...(page.titleBar||{}), enabled: v }}; updateState({ pages: np }); }} type="checkbox"/>
             {page.titleBar?.enabled && <>
               <PropField label="text" value={page.titleBar.text} onChange={v => { const np=[...pages]; np[selectedPage]={...page,titleBar:{...page.titleBar,text:v}}; updateState({pages:np}); }}/>
-              <PropField label="bg_color" value={page.titleBar.bg_color} onChange={v => { const np=[...pages]; np[selectedPage]={...page,titleBar:{...page.titleBar,bg_color:v}}; updateState({pages:np}); }} type="color"/>
-              <PropField label="text_color" value={page.titleBar.text_color} onChange={v => { const np=[...pages]; np[selectedPage]={...page,titleBar:{...page.titleBar,text_color:v}}; updateState({pages:np}); }} type="color"/>
-              <PropField label="height" value={page.titleBar.height} onChange={v => { const np=[...pages]; np[selectedPage]={...page,titleBar:{...page.titleBar,height:v}}; updateState({pages:np}); }} type="number"/>
+              <div style={{ fontSize: 9, color: "#4a6a8a", marginTop: 2 }}>Colors & height controlled by Header/Footer Style in Theme tab</div>
             </>}
 
             {pages.length > 1 && <button onClick={() => { const np = pages.filter((_,i) => i !== selectedPage); updateState({ pages: np, selectedPage: Math.max(0, selectedPage - 1), selectedWidget: null }); }} style={{ width: "100%", marginTop: 12, padding: "6px 12px", background: "transparent", color: "#cc4444", border: "1px solid #663333", borderRadius: 4, fontSize: 10, cursor: "pointer" }}>Delete Page</button>}
