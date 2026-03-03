@@ -355,7 +355,8 @@ function generateYaml(state) {
     navFooter.buttons.forEach(b => {
       y += `${indent(8)}- id: ${b.id}\n`;
       y += `${indent(9)}text: "${b.text}"\n`;
-      y += `${indent(9)}on_press:\n${indent(10)}then:\n${indent(11)}${b.action}:\n`;
+      const act = b.action.includes(":") ? b.action : `${b.action}:`;
+      y += `${indent(9)}on_press:\n${indent(10)}then:\n${indent(11)}${act}\n`;
     });
     y += "\n";
   }
