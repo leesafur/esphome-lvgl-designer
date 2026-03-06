@@ -717,9 +717,25 @@ function yamlToState(yamlStr, currentState) {
 
   const pages = lvgl.pages.map((page, i) => {
     const existing = currentState.pages[i] || currentState.pages[0] || {};
+    let detectedTitleBar = null;
     const widgets = (page.widgets || []).flatMap(w => {
       const [wtype, wprops] = Object.entries(w)[0] || [];
       if (!wtype) return [];
+      // Detect title bar: obj with styles: header_footer containing a label child
+      if (wtype === "obj" && wprops?.styles === "header_footer" && wprops?.widgets?.length) {
+        const labelEntry = wprops.widgets.find(cw => Object.keys(cw)[0] === "label");
+        if (labelEntry) {
+          const lp = labelEntry.label || {};
+          detectedTitleBar = {
+            enabled: true,
+            text: (lp.text || "").replace(/^"|"$/g, ""),
+            bg_color: existing.titleBar?.bg_color || "#16213e",
+            text_color: fromHex(lp.text_color) || "#ffffff",
+            height: existing.titleBar?.height || 36,
+          };
+          return []; // Don't create a widget for the title bar
+        }
+      }
       const widget = parseYamlWidget(wtype, wprops);
       return widget ? [widget] : [];
     });
@@ -731,7 +747,7 @@ function yamlToState(yamlStr, currentState) {
       ...(page.layout?.flex_flow ? { flex_flow: page.layout.flex_flow } : {}),
       ...(page.layout?.flex_align_main ? { flex_align_main: page.layout.flex_align_main } : {}),
       ...(page.layout?.flex_align_cross ? { flex_align_cross: page.layout.flex_align_cross } : {}),
-      titleBar: existing.titleBar || { enabled: false, text: "", bg_color: "#16213e", text_color: "#ffffff", height: 36 },
+      titleBar: detectedTitleBar || existing.titleBar || { enabled: false, text: "", bg_color: "#16213e", text_color: "#ffffff", height: 36 },
       widgets,
     };
   });
